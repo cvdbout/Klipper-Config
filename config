@@ -1,0 +1,40 @@
+Prusa Slicer G-Code
+
+M109 S0
+M190 S0
+start_print EXTRUDER_TEMP={first_layer_temperature[initial_extruder]} BED_TEMP={first_layer_bed_temperature[initial_extruder]}
+
+=====================================================================================================================================
+
+Klipper printer.cfg
+
+[gcode_macro START_PRINT]
+gcode:
+#Find Extruder and Bed temperatures on Slicer settings and place them below or set them on dashboard
+    {% set BED_TEMP = params.BED_TEMP|default(60)|float %}                                         ; Slicer Bed Temp          PLA = 60    PETG = 75 
+    {% set EXTRUDER_TEMP = params.EXTRUDER_TEMP|default(205)|float %}                              ; Slicer FirstLayer Temp   PLA = 205   PETG = 230
+    #SAVE_GCODE_STATE NAME=start_print
+#Preheat Bed 
+    M140 S{BED_TEMP}                    ; Set Bed temp (PLA = 60 PETG = 70) 
+    M109 S{EXTRUDER_TEMP - 10} T0       ; Set temporary nozzle temp of to prevent oozing during homing and auto bed leveling
+    G4 S10                              ; Allow partial nozzle warmup
+    G90                                 ; Use absolute coordinates
+    G28                                 ; Home all axes 
+    #BED_MESH_CALIBRATE
+#Preheat Extruder
+    G92 E0                              ; Reset Extruder
+    G1 Z10                              ; Move Z up 10
+    M83                                 ; Extruder relative mode
+    M109 S{EXTRUDER_TEMP} T0            ; Set Extruder temp and wait for it to be reached
+#Precondition Extruder   
+    BED_MESH_PROFILE LOAD=default     
+#Purge
+    G1 Z2.0 F3000                       ; Move Z up little to prevent scratching of Bed
+    G1 X5 Y20 Z0.3 F5000.0            ; Move to start position
+    G1 X5 Y220.0 Z0.3 F1500.0 E20     ; Draw the first line down
+    G1 X5.3 Y220.0 Z0.3 F5000.0         ; Move to side a little
+    G1 X5.3 Y20 Z0.3 F1500.0 E30        ; Draw the second line up
+    G92 E0                              ; Reset Extruder
+    G1 Z2.0 F3000                       ; Move Z up little to prevent scratching of Bed
+    G1 X6 Y20 Z0.3 F5000.0              ; Move over to avoid line
+    #RESTORE_GCODE_STATE NAME=start_print
